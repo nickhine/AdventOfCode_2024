@@ -32,7 +32,7 @@ def check_map(gx,gy,dir,map):
     foundloop = False
     while(onmap):
         if visited[gx,gy]==1 and dirvisited[gx,gy,dir]==1:
-            print('loop detected')
+            #print('loop detected')
             foundloop = True
             break
         visited[gx,gy] = 1
@@ -52,19 +52,30 @@ def check_map(gx,gy,dir,map):
 vec = [(0,-1),(1,0),(0,1),(-1,0)]
 vecstr = ['^','>','v','<']
 origmap = np.copy(map)
+ogx = gx
+ogy = gy
+dir = 0
+dirvisited = np.zeros((lx,ly,4),dtype=int)
+visited = np.zeros((lx,ly),dtype=int)
+check_map(gx,gy,dir,origmap)
+orig_visited = np.copy(visited)
 tot = 0
 for py in range(ly):
     for px in range(lx):
+        if orig_visited[px,py]!=1:
+            continue
         dir = 0
-        visited = np.zeros((lx,ly),dtype=int)
-        dirvisited = np.zeros((lx,ly,4),dtype=int)
+        gx = ogx
+        gy = ogy
+        visited[:,:] = 0
+        dirvisited[:,:,:] = 0
         map = np.copy(origmap)
-        print(px,py)
+        #print(px,py)
         if map[px,py]==1:
             continue
         map[px,py] = 1
         if check_map(gx,gy,dir,map):
             tot += 1
 
-printmap(map,gx,gy,dir)
+#printmap(map,gx,gy,dir)
 print(np.sum(visited),tot)
