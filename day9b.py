@@ -29,7 +29,7 @@ for j in range(nf-1,-1,-1):
             fullto[lens[j]] = k
             break
         k += 1
-    print(j)
+    #print(j)
 checksum = 0
 for j in range(0,len(disk)):
     if disk[j] == -1:

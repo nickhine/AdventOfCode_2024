@@ -82,4 +82,5 @@ for ih in range(nheads):
                 routes[ih,ie] += 1
             #if routes[ih,ie]:
             #    break
+print(np.count_nonzero(routes[:,:]))
 print(np.sum(routes[:,:]))

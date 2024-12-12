@@ -36,7 +36,6 @@ for b in range(nb):
         if counts[p,j]==0:
            continue 
         strd = str(nums[p,j])
-        #print(b,j,strd,nums[j])
         if len(strd)%2==0:
             lh = int(strd[0:int(len(strd)/2)])
             rh = int(strd[int(len(strd)/2):])
@@ -57,9 +56,9 @@ for b in range(nb):
                 qlnum += 1
             else:
                 counts[q,i] += counts[p,j]
-    #print(f'### b={b} p={p} q={q} plnum={plnum} qlnum={qlnum}',nums[q,0:qlnum],counts[q,0:qlnum])
     # update q with p values
     plnum = qlnum
     counts[p,0:qlnum] = counts[q,0:qlnum]
     nums[p,0:qlnum] = nums[q,0:qlnum]
-print(np.sum(counts[q,0:qlnum]))
+np.savetxt('counts.txt',np.column_stack([nums[q,:],counts[q,:]]))
+print(qlnum,np.sum(counts[q,0:qlnum]))
