@@ -1,10 +1,7 @@
 import numpy as np
 np.set_printoptions(threshold=np.inf,linewidth=np.inf)
-
 with open('d12.dat') as f:
     data = f.read().splitlines()
-
-print(data)
 lx = len(data[0])
 ly = len(data)
 data = np.array([list(x) for x in data],dtype=str)
@@ -57,26 +54,52 @@ def find_perim(pmap,vtarg):
                 perim = perim + 1
     return perim,rlist
 
-regions = []
-tot = 0
+pcorner = np.array([0,1,1,0,1,0,2,1,1,2,0,1,0,1,1,0],dtype=int)
+bits = np.array([1,2,4,8])
+def find_edges(pmap,vtarg):
+    corners = 0
+    ploc = np.zeros((2,2),dtype=int)
+    rlist = np.where(pmap==vtarg)
+    minx = np.min(rlist[1])
+    maxx = np.max(rlist[1])
+    miny = np.min(rlist[0])
+    maxy = np.max(rlist[0])
+    for ry in range(miny,maxy+2):
+        for rx in range(minx,maxx+2):
+            ploc[:,:] = 0
+            if rx > 0 and ry > 0:
+                ploc[0,0] = pmap[ry-1,rx-1]
+            if rx <= lx-1 and ry > 0:
+                ploc[0,1] = pmap[ry-1,rx]
+            if rx > 0 and ry <= ly-1:
+                ploc[1,0] = pmap[ry,rx-1]
+            if rx <= lx-1 and ry <= ly-1:
+                ploc[1,1] = pmap[ry,rx]
+            pval = np.sum((ploc==-1).flatten()*bits)
+            corners = corners + pcorner[pval]
+    return corners,rlist
+
+tot1,tot2 = 0,0
+# loop over plants
 for ipp,plant in enumerate(plants):
     ip = ipp + 1
     pmap[:,:] = 0
+    # Make a map of just this plant
     pmap[pmap_full == ip] = ip
     while np.any(pmap>0):
+        # Find first remaining plant of this type in map
         plist = np.where(pmap>0)
-        # Flood fill to find connected region)
         oy,ox = plist[0][0],plist[1][0]
+        # Flood fill to find connected region
         fill(ox,oy,pmap,ip,-1)
+        # Find area of region
+        area = np.sum(pmap==-1)
+        # Find perimeter of region
         perim,rlist = find_perim(pmap,-1)
-        area = np.sum(pmap == -1)
-        minx = np.min(rlist[1])
-        maxx = np.max(rlist[1])
-        miny = np.min(rlist[0])
-        maxy = np.max(rlist[0])
-        if ip==24:
-            print(-pmap[miny:maxy+1,minx:maxx+1])
-            print(f'ip={ip} plant={plant} ox,oy={ox},{oy} area={area} perim={perim} prod={area*perim}')
-        tot += area*perim
+        # Find number of edges of region
+        edges,rlist = find_edges(pmap,-1)
+        tot1 += area*perim
+        tot2 += area*edges
+        # Clear region from map of this plant
         pmap[pmap == -1] = 0
-print(tot)
+print(tot1,tot2)
