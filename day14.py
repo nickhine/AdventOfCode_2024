@@ -9,10 +9,8 @@ robotvel = np.zeros((nrobots,2),dtype=int)
 for i,l in enumerate(data):
     ls = l.strip()
     rproc = re.split(r'[=|,| ]', l.strip())
-    robotpos[i,0] = rproc[1]
-    robotpos[i,1] = rproc[2]
-    robotvel[i,0] = rproc[4]
-    robotvel[i,1] = rproc[5]
+    robotpos[i,:] = rproc[1:3]
+    robotvel[i,:] = rproc[4:6]
 lx = 101
 ly = 103
 cmap = np.zeros((ly,lx),dtype=int)
