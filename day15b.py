@@ -13,36 +13,35 @@ with open('d15.dat') as f:
         if not line:
             break
         instr += line
-    
 lx = len(mapl[0])*2
 ly = len(mapl)
 mapa = np.zeros((ly,lx),dtype=int)
 boxes = []
+WALL = -100
+FLOOR = -200
 for i in range(ly):
     for j in range(lx):
         if j % 2 == 1:
             continue
         jp = int(j/2)
         if mapl[i][jp] == '#':
-            print(i,j,jp,mapa.shape)
-            mapa[i,j] = 1
-            mapa[i,j+1] = 1
+            mapa[i,j] = WALL
+            mapa[i,j+1] = WALL
         if mapl[i][jp] == '.' or mapl[i][jp] == '@' or mapl[i][jp] == 'O':
-            mapa[i,j] = 0
-            mapa[i,j+1] = 0
+            mapa[i,j] = FLOOR
+            mapa[i,j+1] = FLOOR
         if mapl[i][jp] == '@':
             rx,ry = j,i
         if mapl[i][jp] == 'O':
             boxes.append((j,i))
 boxes = np.array(boxes)
-print(boxes)
-print(mapa)
+nboxes = len(boxes)
 
 def add_boxes(mapa,mapb,boxes):
     mapb[:,:] = mapa[:,:]
-    for box in boxes:
-        mapb[box[1],box[0]] = 2
-        mapb[box[1],box[0]+1] = 3
+    for ibox,box in enumerate(boxes):
+        mapb[box[1],box[0]] = ibox
+        mapb[box[1],box[0]+1] = ibox + nboxes
 
 def print_map(mapb,rx,ry):
     mapstr = ""
@@ -51,13 +50,13 @@ def print_map(mapb,rx,ry):
             if i == ry and j == rx:
                 mapstr += '@'
                 continue
-            if mapb[i,j] == 1:
+            if mapb[i,j] == WALL:
                 mapstr += '#'
-            elif mapb[i,j] == 2:
+            elif nboxes > mapb[i,j] >= 0:
                 mapstr += '['
-            elif mapb[i,j] == 3:
+            elif 2*nboxes > mapb[i,j] >= nboxes:
                 mapstr += ']'
-            else:
+            elif mapb[i,j] == FLOOR:
                 mapstr += '.'
         mapstr += '\n'
     print(mapstr)
@@ -69,83 +68,65 @@ for i,inst in enumerate(instr):
     for j in range(4):
         if inst == dirch[j]:
             instra[i] = j
-print(instra)
 
-def box_in(p,boxes):
-    for ibox,box in enumerate(boxes):
-        if (box==p).all():
-            return ibox
-        if (box+np.array((1,0))==p).all():
-            return ibox
-    return -1
+def box_in(p,mapb):
+    if mapb[p[1],p[0]] >= 0:
+        return mapb[p[1],p[0]] % nboxes
+    else:
+        return -1
+    
+spots = np.array([[0,0],[1,0]],dtype=int)
 
 def push_boxes(rx,ry,inst,mapb,boxes):
     p = np.array((rx + dp[inst][0],ry + dp[inst][1]))
-    i = box_in(p,boxes)
+    i = box_in(p,mapb)
     if i < 0:
         return
-    #print(f"Pushing box {i}")
     stuck = False
     moving = False
-    pushed = [i]
+    pushed = np.zeros((nboxes),dtype=int)
+    pushed[0] = i
     npshd = 1
+    fpshd = 0
     while not stuck and not moving:
         moving = True
-        for j in range(npshd-1,-1,-1):
+        for j in range(fpshd,npshd):
             oldpushd = npshd
-            for spots in (0,1):
+            for spot in spots:
                 q = np.array(boxes[pushed[j]][:])
-                if spots==1:
-                    q[0] += 1
-                q += dp[inst]
-                #print(boxes)
-                if mapb[q[1],q[0]] == 1:
+                q += dp[inst] + spot
+                if mapb[q[1],q[0]] == WALL:
                     stuck = True
                     break # found a wall
-                if mapb[q[1],q[0]] == 2 or mapb[q[1],q[0]] == 3:
-                    k = box_in(q,boxes)
-                    if k < 0:
-                        continue
-                    if k not in pushed:
-                        pushed.append(k)
-                        npshd += 1
-                        break
+                k = box_in(q,mapb)
+                if k >= 0 and not np.any(pushed[0:npshd] == k):
+                    pushed[npshd] = k
+                    npshd += 1
+                    break
             if oldpushd != npshd:
                 moving = False # not done yet, keep finding boxes
+            else:
+                fpshd = j
+            if stuck:
+                break
     if not stuck:
-        #print(f'Moving boxes {pushed}')
         for j in range(npshd):
             boxes[pushed[j]][:] += dp[inst][:]
     return moving and not stuck
 
 def get_GPS(boxes):
     tot = 0
-    # The GPS coordinate of a box is equal to 100 times its distance from the top edge of the map plus its distance from the left edge of the map.
     for box in boxes:
         tot = tot + box[1]*100 + box[0]
     return tot
 
 mapb = np.zeros((ly,lx),dtype=int)
 add_boxes(mapa,mapb,boxes)
-print("Initial state:")
-print_map(mapb,rx,ry)
 for inst in instra:
-    print(f"Move {dirch[inst]}:")
-    mapb[:,:] = mapa[:,:]
-    add_boxes(mapa,mapb,boxes)
-    if mapa[ry+dp[inst][1],rx+dp[inst][0]] == 1:
-        pass
-        #print("Cannot move")
-    else:
-        moving = push_boxes(rx,ry,inst,mapb,boxes)
-        if moving:
-            #print_map(mapb,rx,ry)
-            add_boxes(mapa,mapb,boxes)
-        if mapb[ry+dp[inst][1],rx+dp[inst][0]] == 0:
-            rx += dp[inst][0]
-            ry += dp[inst][1]
-            #print("Moved")
-        if moving:
-            pass #print_map(mapb,rx,ry)
-    #print("")
+    moved = push_boxes(rx,ry,inst,mapb,boxes)
+    if moved:
+        add_boxes(mapa,mapb,boxes)
+    if mapb[ry+dp[inst][1],rx+dp[inst][0]] == FLOOR:
+        rx += dp[inst][0]
+        ry += dp[inst][1]
 print('Final GPS: ', get_GPS(boxes))
