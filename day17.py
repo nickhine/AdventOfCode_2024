@@ -15,6 +15,12 @@ def tstr(i,width=2):
         t = '0' * (width - len(t)) + t
    return t
 
+def dstr(i,width=2):
+   t = np.base_repr(i,10)
+   if len(t) < width:
+        t = '0' * (width - len(t)) + t
+   return t
+
 progtern = [tstr(x) for x in prog]
 progout = ",".join(progtern)
 #print(regA,regB,regC)
@@ -30,7 +36,9 @@ opstr = {0:'adv',
          7:'cdv'}
 
 regAi = 5
-for override in range(0,30000,1):
+# input is output of monte carlo search favouring high digits
+seed = 136904920099226
+for override in range(seed-2**18,seed+2**18,1):
     regA = override
     regB = regBi
     regC = regCi
@@ -88,14 +96,11 @@ for override in range(0,30000,1):
             progstr += os + f": regC = regA / 2**{combstr} = " + tstr(regA) + " / 2**" + tstr(combo) + " = " + tstr(regC) + "\n"
         ip += 2
         #print(progstr,end="")
+    #print(progstr,end="")
     output = output[0:-1]
-    ag = 0
-    if output[0:ag]==progout[0:ag]: #len(output)==len(progstr): # output[0:1]==progstr[0:1]:
-        #print(progstr)
-        print(f'{tstr(override):36}: {output}')
-        #print(f'{tstr(0):36}: {progout}')
-    #if override % 1000000 == 0:
-    #    print(override)
-    if False: #output[0:3]==progstr[0:3]:
-        print("Override:",override)
-        break
+    ag = 21
+    if output==progout:
+        print('BINGO: ',override)
+    if output[0:ag]==progout[0:ag]:
+        print(f'{dstr(override):36}: {output}')
+        print(f'{dstr(0):36}: {progout}')
