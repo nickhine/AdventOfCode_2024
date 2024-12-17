@@ -84,38 +84,46 @@ nodes = []
 ldir = 0
 pdir = 0
 score = 0
-worstbt = 0
 bestnpath = 1000000
 bestscore = 1000000
 bestpath = np.zeros((maxpath,2),dtype=int)
+from heapq import heappush, heappop
 while True:
     cdirs[:] = 0
-    ddirs = [pdir,(pdir-1)%4,(pdir+1)%4] #[0,1,2,3]
-    for idir in ddirs: #range(ldir,4):
+    ddirs = [pdir,(pdir-1)%4,(pdir+1)%4]
+    for idir in ddirs:
         if ddirs.index(idir) < ddirs.index(dir):
-            continue
+            continue # already visited
         npos = pos + dp[idir]
         if mapa[npos[1],npos[0]] == 1:
-            continue
-        if score + turn_cost(idir,dir) > mapbest[npos[1],npos[0],idir]:
-            continue
-        pathcheck = (path[0:npath]==npos).all(axis=1).any()
-        cdirs[idir] = (mapa[npos[1],npos[0]] != 1 and not pathcheck)
+            continue # wall
+        if score + turn_cost(idir,dir) + 1 > mapbest[npos[1],npos[0],idir]:
+            continue # better path here already found
+        cdirs[idir] = 1
     if np.sum(cdirs) > 1:
         skipped1st = False
         for dm in ddirs:
             d = dm%4
             if cdirs[d]:
                 if not skipped1st:
-                    #print('skipped: ',dir,'->',d)
                     skipped1st = True
                 else:
-                    nodes.append((path[0:npath].copy(),d,pdir,score))
+                    nodes.append((score,path[0:npath].copy(),d,pdir))
+                    checksum = np.sum(path[0:npath,0]*np.arange(npath)) + np.sum(path[0:npath,1]*np.arange(npath))*1000
+                    #print(score,npath,d,pdir,checksum)
+                    #heappush(nodes,(score,npath,d,pdir,checksum,path[0:npath].copy()))
     if np.sum(cdirs) == 0:
         if len(nodes) == 0:
             print('Dead end and no more nodes')
             break
-        lp,dir,pdir,score = nodes.pop(0)
+        score,lp,dir,pdir = nodes.pop(0)
+        #print('nodes=',nodes)
+        #try:
+        #    score,npath,dir,pdir,_,lp = heappop(nodes)
+        #except:
+        #    print("Error in heappop")
+        #    for nn in nodes:
+        #        print(nn[0:7])
         ldir = dir
         npath = len(lp)
         path[0:npath] = lp[0:npath]
@@ -126,7 +134,6 @@ while True:
         if cdirs[mdir]:
             dir = mdir
             break
-    #print('turning: ',pdir,'->',dir)
     score += turn_cost(dir,pdir)
     pdir = dir
     npos = pos + dp[dir]
@@ -137,7 +144,7 @@ while True:
         mapbest[pos[1],pos[0],dir] = score
     path[npath][:] = pos[:]
     npath += 1
-    if (pos==endpos).all():
+    if (pos==endpos).all() or score > bestscore:
         if score == bestscore:
             #print("Equal best score:",score,' (nodes=',len(nodes),')')
             for i in range(npath):
@@ -154,7 +161,8 @@ while True:
         if len(nodes) == 0:
             print('No more nodes')
             break
-        lp,dir,pdir,score = nodes.pop(0)
+        score,lp,dir,pdir = nodes.pop(0)
+        #score,npath,dir,pdir,_,lp = heappop(nodes)
         ldir = dir
         npath = len(lp)
         path[0:npath] = lp
