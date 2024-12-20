@@ -29,7 +29,7 @@ for i in range(ly):
             endpos[0] = j
             endpos[1] = i
 
-def print_map(mapb,time,pos,path,npath):
+def print_map(mapb,time,pos,path,npath,numpath=False):
     mapstr = ""
     for ip in range(len(path)):
         if path[ip,0]==0 and path[ip,1]==0:
@@ -46,9 +46,12 @@ def print_map(mapb,time,pos,path,npath):
             if j == endpos[0] and i == endpos[1]:
                 mapstr += 'E'
                 continue
-            if (path[0:npath]==(j,i)).all(axis=1).any():
+            if (path[0:npath]==(j,i)).all(axis=1).any() and numpath:
                 index = np.where((path[0:npath]==(j,i)).all(axis=1))[0][0]
                 if index > 0:
+                    if numpath:
+                        mapstr += chr(ord('A')+int(index/(npath/58)))
+                        continue
                     prev = path[index-1]
                     mdir = np.where((dp==path[index]-prev).all(axis=1))[0]
                     if len(mdir) > 0:
@@ -57,8 +60,12 @@ def print_map(mapb,time,pos,path,npath):
                         print(path[index-3:index+3])
                         print('Error in path:',prev,path[index])
                     continue
-            if mapb[i,j] >= 0:
+            if mapb[i,j] < -1:
+                mapstr += 'C'
+            elif mapb[i,j] == -1 or mapb[i,j] == 1:
                 mapstr += '#' #chr(ord('0')+int(mapb[i,j]/4))
+            elif mapb[i,j] == -999:
+                mapstr += 'X'
             else:
                 mapstr += '.'
         mapstr += '\n'
@@ -83,7 +90,7 @@ while True:
     score = 1
     bestscore = 100000
     mapbestpath = -np.ones((ly,lx,maxpath,2),dtype=int)
-    mapbestpath[1,1,0,:] = stpos[:]
+    mapbestpath[stpos[1],stpos[0],0,:] = stpos[:]
     mapbest = np.ones((ly,lx),dtype=int)*100000
     mapbest[stpos[1],stpos[0]] = 1
     while True:
@@ -193,86 +200,73 @@ while True:
     if bestscore == 5000:
         print(f'No path found')
     else:
-        #print(f"Path found Best path:{bestscore-1}")
+        print(f"Path found Best path:{bestscore-1}")
         pass
     break
 #print(mapbestpath[endpos[1],endpos[0],0:26],mapbestpath[endpos[1],endpos[0],npath-28:npath])
 time = 0
-mapt = np.zeros((ly,lx),dtype=int)
-mapt[:,:] = -mapa[:,:]
-dp1 = np.zeros(2,dtype=int)
-dp2 = np.zeros(2,dtype=int)
-dp3 = np.zeros(2,dtype=int)
-for ipath,pos in enumerate(mapbestpath[endpos[1],endpos[0],1:mapbest[endpos[1],endpos[0]]]):
-    mapt[pos[1],pos[0]] = ipath + 1
-    #print(ipath,mapt[pos[1],pos[0]])
-ngoodcheats = 0
+mapt = np.ones((ly,lx),dtype=int)*-1
+mapt[stpos[1],stpos[0]] = 0
+for y in range(0,ly):
+    for x in range(0,lx):
+        if mapa[y,x] == 1:
+            mapt[y,x] = -1
+for ipath,pos in enumerate(mapbestpath[endpos[1],endpos[0],0:mapbest[endpos[1],endpos[0]]]):
+    mapt[pos[1],pos[0]] = ipath
+print_map(mapt,time,pos,mapbestpath[endpos[1],endpos[0],0:mapbest[endpos[1],endpos[0]]],mapbest[endpos[1],endpos[0]],numpath=True)
+print('stpos:',stpos)
+print(mapbestpath[endpos[1],endpos[0],0:10])
+dse = np.zeros(2,dtype=int)
 cspos = np.zeros(2,dtype=int) # cheat start pos
-cfpos = np.zeros(2,dtype=int) # cheat first pos
-cppos = np.zeros(2,dtype=int) # cheat penultimate pos
 cepos = np.zeros(2,dtype=int) # cheat end pos
-cheatfound = {} #np.zeros((lx,ly),dtype=int)
+cheatfound = {}
+ngoodcheats = 0
 goodcheatval = 100
 cheatcount = {}
-for x in range(1,lx-1):
-    for y in range(1,ly-1):
-        if mapt[y,x] == -1:
+#for x in range(1,lx-1):
+#    for y in range(1,ly-1):
+for ipath,cspos in enumerate(mapbestpath[endpos[1],endpos[0],0:mapbest[endpos[1],endpos[0]]]):
+        if mapt[cspos[1],cspos[0]] == -1:
             continue # can't start in wall
-        cspos[:] = np.array((x,y))
         cheatfound = {}
-        for d1 in range(4):
-            dp1[0] = dp[d1][0]
-            dp1[1] = dp[d1][1]
-            cfpos[:] = cspos + dp1
-            if cfpos[1] < 0 or cfpos[1] >= ly or cfpos[0] < 0 or cfpos[0] >= lx:
-                continue # out of bounds
-            #if mapt[cfpos[1],cfpos[0]] != -1: # must jump into wall on first move
-            #    continue
-            for dp3[0] in range(-20,20):
-                for dp3[1] in range(-20,20):
-                    for d2 in range(4):
-                        dp2[0] = dp[d2][0]
-                        dp2[1] = dp[d2][1]
-                        cepos[:] = cspos + dp1 + dp3 + dp2
-                        cppos[:] = cspos + dp1 + dp3
-                        #print(cspos,dp1,dp2,dp3,cepos)
-                        if cppos[1] < 0 or cppos[1] >= ly or cppos[0] < 0 or cppos[0] >= lx:
-                            continue # out of bounds
-                        if cepos[1] < 1 or cepos[1] >= ly or cepos[0] < 1 or cepos[0] >= lx:
-                            continue # out of bounds
-                        #if mapt[cppos[1],cppos[0]] != -1: # must jump out of wall on last move
-                        #    continue
-                        if mapt[cepos[1],cepos[0]] == -1: # check end pos of cheat not in wall
-                            continue
-                        dist = abs(dp1[0])+abs(dp1[1])+abs(dp2[0])+abs(dp2[1])+abs(dp3[0])+abs(dp3[1])
-                        if dist > 20:
-                            continue # too far
-                        cheatvalue = mapt[cepos[1],cepos[0]] - mapt[cspos[1],cspos[0]] - dist
-                        if cheatvalue >= goodcheatval:
-                            if (cepos[0],cepos[1]) in cheatfound:
-                                if cheatvalue in cheatfound[(cepos[0],cepos[1])]:
-                                    continue # already cheat of this value for this end pos
-                            else:
-                                cheatfound[(cepos[0],cepos[1])] = []
-                            if cheatvalue not in cheatfound[(cepos[0],cepos[1])]:
-                                cheatfound[cepos[0],cepos[1]].append(cheatvalue)
-                            #print(f'Cheat saving {cheatvalue} ps, dist={dist} from {cspos}({mapt[cspos[1],cspos[0]]}) to {cepos}({mapt[cepos[1],cepos[0]]}), {dp1} {dp2} {dp3}')
+        for dse[0] in range(-20,21):
+            for dse[1] in range(-20,21):
+                cepos[:] = cspos[:] + dse[:]
+                if cepos[1] < 1 or cepos[1] >= ly or cepos[0] < 1 or cepos[0] >= lx:
+                    continue # out of bounds
+                if mapt[cepos[1],cepos[0]] == -1: # check end pos of cheat not in wall
+                    continue
+                dist = abs(dse[0]) + abs(dse[1])
+                if dist > 20:
+                    continue # too far
+                cheatvalue = mapt[cepos[1],cepos[0]] - mapt[cspos[1],cspos[0]] - dist
+                if cheatvalue >= goodcheatval:
+                    if (cepos[1],cepos[0]) in cheatfound:
+                        if cheatvalue<cheatfound[(cepos[1],cepos[0])]:
+                            cheatfound[(cepos[1],cepos[0])] = cheatvalue
+                    else:
+                        cheatfound[(cepos[1],cepos[0])] = cheatvalue
+                    #print(f'Cheat saving {cheatvalue} ps, dist={dist} from {cspos}({mapt[cspos[1],cspos[0]]}) to {cepos}({mapt[cepos[1],cepos[0]]}), {dse}')
+        #mapvis = mapa.copy()
         for cepos[0] in range(1,lx-1):
             for cepos[1] in range(1,ly-1):
-                if (cepos[0],cepos[1]) not in cheatfound:
+                if (cepos[1],cepos[0]) not in cheatfound:
                     continue
-                cheatvalues = cheatfound[cepos[0],cepos[1]]
-                for cheatvalue in cheatvalues:
-                    if max(cheatvalues) > cheatvalue:
-                        continue
-                    ngoodcheats += 1
-                    if cheatvalue in cheatcount:
-                        cheatcount[cheatvalue] += 1
-                    else:
-                        cheatcount[cheatvalue] = 1
-                    #print(f'Cheat saving {cheatvalue} ps from {cspos}({mapt[cspos[1],cspos[0]]}) to {cepos}({mapt[cepos[1],cepos[0]]})')
-print_map(mapa,time,pos,mapbestpath[endpos[1],endpos[0]],mapbest[endpos[1],endpos[0]])
-for cheatvalue in sorted(cheatcount.keys()):
-    print(f'Cheats saving {cheatvalue} ps: {cheatcount[cheatvalue]}')
-print(f'Cheats saving {goodcheatval}ps or more: {ngoodcheats}')
-# 994165 too low ~1200000 too high 1022345 wrong
+                cheatvalue = cheatfound[cepos[1],cepos[0]]
+                #if cheatvalue > 0:
+                #    mapvis[cepos[1],cepos[0]] = -cheatvalue
+                ngoodcheats += 1
+                if cheatvalue in cheatcount:
+                    cheatcount[cheatvalue] += 1
+                else:
+                    cheatcount[cheatvalue] = 1
+                #print(f'Cheat saving {cheatvalue} ps from {cspos}({mapt[cspos[1],cspos[0]]}) to {cepos}({mapt[cepos[1],cepos[0]]})')
+        #print("\n\n\n",cspos)
+        #print_map(mapvis,time,cspos,mapbestpath[endpos[1],endpos[0]],mapbest[endpos[1],endpos[0]],numpath=False)
+
+#print_map(mapa,time,pos,mapbestpath[endpos[1],endpos[0]],mapbest[endpos[1],endpos[0]])
+#for cheatvalue in sorted(cheatcount.keys()):
+#    print(f'Cheats saving {cheatvalue} ps: {cheatcount[cheatvalue]}')
+print(f'Cheats saving {goodcheatval} ps or more: {ngoodcheats}')
+# 994165 too low ~1200000 too high 1022345 wrong 1022005 wrong 1026104 wrong
+# 9452 best path, 9424 = path length 28
