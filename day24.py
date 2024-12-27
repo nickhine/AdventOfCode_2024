@@ -96,6 +96,19 @@ def check_rename_first(key,char):
         return rename[key][0][0]==char
     return False
 
+'''
+FOR BIT 0:
+GATE0: X XOR Y -> Z0
+GATE1: X AND Y -> C+1
+
+FOR BIT > 0:
+GATE0: X XOR Y -> J
+GATE1: J XOR C -> Z
+GATE2: J AND C -> K
+GATE3: X AND Y -> L
+GATE4: K  OR L -> C+1
+'''
+
 alldone = False
 it = 0
 while not alldone:
