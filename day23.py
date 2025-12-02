@@ -29,6 +29,16 @@ for c1 in cons:
                 if set123 not in threes:
                     threes.append(set123)
 
+#def BronKerbosch2(R, P, X):
+#    if len(P)==len(X)==0:
+#        print('maximal clique:', sorted(R))
+#    
+#    choose a pivot vertex u in P ⋃ X
+#    for each vertex v in P \ N(u) do
+#        BronKerbosch2(R ⋃ {v}, P ⋂ N(v), X ⋂ N(v))
+#        P := P \ {v}
+#        X := X ⋃ {v}
+
 import networkx as nx
 G = nx.Graph()
 for l in data:
